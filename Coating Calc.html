@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Armor Coating</title>
+    <style>
+        body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f2f2f2; }
+        .box { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ccc; }
+        h2 { background-color: #007bff; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 10px 10px 0 0; text-align: center; }
+        .row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .col { flex: 1; }
+        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #333; text-transform: uppercase; }
+        input { width: 100%; padding: 12px; border: 1px solid #bbb; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        .fuel-box { background-color: #fff8e1; border: 2px solid #ffecb3; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+        .btn-map {
+            display: block; width: 100%; text-align: center; text-decoration: none;
+            background-color: #28a745; color: white; font-weight: bold; font-size: 16px;
+            padding: 12px; border-radius: 5px; margin-top: 5px; box-sizing: border-box;
+        }
+        .note { font-size: 11px; text-align: center; color: #666; margin-top: 5px; font-style: italic; }
+        .btn-main {
+            width: 100%; padding: 15px; font-size: 18px; font-weight: bold; 
+            color: white; background: #007bff; border: none; border-radius: 5px; 
+            cursor: pointer; margin-top: 20px; margin-bottom: 20px;
+        }
+        .results-box { background-color: #e3f2fd; padding: 15px; border-radius: 8px; border: 1px solid #bbdefb; }
+        .line { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 8px; }
+        .sub { margin-left: 20px; font-size: 14px; color: #555; display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .total-line { border-top: 2px solid #999; margin-top: 15px; padding-top: 10px; font-size: 20px; font-weight: bold; color: #c62828; }
+        .profit-line { font-size: 18px; font-weight: bold; color: #2e7d32; }
+        hr { border: 0; border-top: 1px solid #ddd; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Job Cost Calculator</h2>
+
+    <div class="fuel-box">
+        <label style="color:#f57f17;">1. Fuel Calculator</label>
+        
+        <input type="text" id="custAddr" placeholder="Enter City or Zip Code" oninput="updateMapLink()">
+        
+        <a id="mapLink" href="#" target="_blank" class="btn-map">Open Google Maps</a>
+        
+        <div class="row" style="margin-top:15px;">
+            <div class="col">
+                <label>One-Way Miles</label>
+                <input type="number" id="miles" placeholder="0" oninput="calcFuel()">
+
+                <label style="margin-top:10px;">Drive Time (Minutes)</label>
+                <input type="number" id="driveTime" placeholder="0">
+            </div>
+            <div class="col">
+                <label>Fuel Cost ($)</label>
+                <input type="number" id="calcTripCost" readonly style="background:#eee;">
+            </div>
+        </div>
+        <div class="note">Auto-calc: (Miles × 2) ÷ 8 mpg × $3.00</div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <label>Square Feet</label>
+            <input type="number" id="sqft" value="1500">
+        </div>
+        <div class="col">
+            <label>Selling Price ($)</label>
+            <input type="number" id="price" value="9600">
+        </div>
+    </div>
+
+    <input type="hidden" id="finalFuel" value="0">
+
+    <hr>
+    <label>Labor Costs (Actual $)</label>
+    <div class="row">
+        <div class="col"><input type="number" id="l1" value="220" placeholder="Person 1"></div>
+        <div class="col"><input type="number" id="l2" value="210" placeholder="Person 2"></div>
+    </div>
+    <div class="row">
+        <div class="col"><input type="number" id="l3" placeholder="Person 3"></div>
+        <div class="col"><input type="number" id="l4" placeholder="Person 4"></div>
+    </div>
+    <div class="row">
+        <div class="col"><input type="number" id="l5" placeholder="Person 5"></div>
+        <div class="col"></div>
+    </div>
+
+    <hr>
+    <label>Material Costs</label>
+    <div class="row">
+        <div class="col"><label>Base $/gal</label><input type="number" id="cBase" value="80"></div>
+        <div class="col"><label>Clear $/gal</label><input type="number" id="cClear" value="83"></div>
+    </div>
+    <div class="row">
+        <div class="col"><label>Flake $/box</label><input type="number" id="cFlake" value="86"></div>
+        <div class="col"><label>Mender $/gal</label><input type="number" id="cMender" value="67"></div>
+    </div>
+    <div class="row">
+        <div class="col"><label>Mender Used (Gal)</label><input type="number" id="uMender" value="0"></div>
+        <div class="col"></div>
+    </div>
+
+    <hr>
+    <label>Overhead</label>
+    <div class="row">
+        <div class="col"><label>Supplies ($)</label><input type="number" id="supplies" value="250"></div>
+        <div class="col"><label>Misc ($)</label><input type="number" id="misc" value="150"></div>
+    </div>
+
+    <button class="btn-main" onclick="run()">2. UPDATE / CALCULATE</button>
+
+    <div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px;">
+        <div style="font-weight:bold; font-size:12px; text-transform:uppercase; color:#555; border-bottom:1px solid #ccc; padding-bottom:5px;">Shopping List</div>
+        <ul id="shopList" style="padding-left:20px; font-weight:bold; margin-bottom:0;">
+            <li>(Click Calculate)</li>
+        </ul>
+    </div>
+
+    <div class="results-box">
+        <div class="line"><span>Materials:</span> <span id="rMat">$0.00</span></div>
+        <div class="line"><span>Labor:</span> <span id="rLabor">$0.00</span></div>
+        <div class="line"><span>Fuel:</span> <span id="rFuel">$0.00</span></div>
+
+        <div class="line"><span>Drive Time:</span> <span id="rDrive">0 min</span></div>
+
+        <div class="line"><span>Overhead:</span> <span id="rOver">$0.00</span></div>
+        
+        <hr style="margin:10px 0;">
+        <div class="line"><span id="lblComm">Sales Commission:</span> <span id="rComm">$0.00</span></div>
+        
+        <div class="line" style="margin-top:10px; font-weight:bold; color:#0056b3;">Shareholders (2%):</div>
+        <div class="sub"><span>Justin:</span> <span id="rJustin">$0.00</span></div>
+        <div class="sub"><span>Chad:</span> <span id="rChad">$0.00</span></div>
+        <div class="sub"><span>Will:</span> <span id="rWill">$0.00</span></div>
+        
+        <div class="total-line line"><span>Total Cost:</span> <span id="rTotal">$0.00</span></div>
+        <div class="profit-line line"><span>Net Profit:</span> <span id="rProfit">$0.00</span></div>
+        <div style="text-align:right; margin-top:5px;" id="rMargin">Margin: 0%</div>
+    </div>
+
+</div>
+
+<script>
+    // Load saved product costs from local storage (if they exist)
+    function loadProductCosts() {
+        const fields = ['cBase', 'cClear', 'cFlake', 'cMender', 'supplies', 'misc'];
+        fields.forEach(field => {
+            const savedValue = localStorage.getItem(field);
+            if (savedValue !== null) {
+                document.getElementById(field).value = savedValue;
+            }
+        });
+    }
+
+    // Save product costs to local storage on input
+    function saveProductCost(fieldId) {
+        const value = document.getElementById(fieldId).value;
+        localStorage.setItem(fieldId, value);
+    }
+
+    // Attach input listeners to product cost fields for saving
+    function setupCostListeners() {
+        const fields = ['cBase', 'cClear', 'cFlake', 'cMender', 'supplies', 'misc'];
+        fields.forEach(field => {
+            const input = document.getElementById(field);
+            input.addEventListener('input', () => saveProductCost(field));
+        });
+    }
+
+    // Initial load of saved costs
+    loadProductCosts();
+    setupCostListeners();
+
+    // 1. UPDATE MAP LINK (Runs when you type address)
+    function updateMapLink() {
+        var addr = document.getElementById('custAddr').value;
+        var origin = "52020 E Robinson Lake Rd, Solon Springs, WI 54873";
+        var url = "https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(origin) + "&destination=" + encodeURIComponent(addr);
+        document.getElementById('mapLink').href = url;
+    }
+
+    // 2. FUEL MATH (Runs when you type miles)
+    function calcFuel() {
+        var miles = parseFloat(document.getElementById('miles').value) || 0;
+        var cost = (miles * 2 / 8) * 3.00;
+        document.getElementById('calcTripCost').value = cost.toFixed(2);
+        document.getElementById('finalFuel').value = cost.toFixed(2);
+    }
+
+    // 3. MAIN CALCULATE
+    function run() {
+        function val(id) {
+            var el = document.getElementById(id);
+            return el ? (parseFloat(el.value) || 0) : 0;
+        }
+        function set(id, n) {
+            document.getElementById(id).innerText = "$" + n.toFixed(2);
+        }
+
+        var sqft = val('sqft');
+        var price = val('price');
+        var fuel = val('finalFuel');
+        var driveTime = val('driveTime');
+
+        var labor = val('l1') + val('l2') + val('l3') + val('l4') + val('l5');
+
+        var cBase = val('cBase'); var cClear = val('cClear'); 
+        var cFlake = val('cFlake'); var cMender = val('cMender');
+        var uMender = val('uMender');
+
+        var overhead = val('supplies') + val('misc');
+
+        var nBase = Math.ceil(sqft / 250);
+        var nClear = Math.ceil(sqft / 125);
+        var nFlake = Math.ceil(sqft / 215);
+
+        var costMat = (nBase * cBase) + (nClear * cClear) + (nFlake * cFlake) + (uMender * cMender);
+        
+        var commPct = 0;
+        if(sqft > 0) commPct = (price / sqft) / 100;
+        var costComm = price * commPct;
+
+        var shareRate = 0.02;
+        var pJustin = price * shareRate;
+        var pChad = price * shareRate;
+        var pWill = price * shareRate;
+        var costShare = pJustin + pChad + pWill;
+
+        var total = costMat + labor + fuel + costComm + overhead + costShare;
+        var profit = price - total;
+        var margin = 0;
+        if(price > 0) margin = (profit / price) * 100;
+
+        set('rMat', costMat);
+        set('rLabor', labor);
+        set('rFuel', fuel);
+        set('rOver', overhead);
+
+        document.getElementById('rDrive').innerText = driveTime + " min";
+        
+        document.getElementById('lblComm').innerText = "Sales Comm (" + (commPct*100).toFixed(2) + "%):";
+        set('rComm', costComm);
+
+        set('rJustin', pJustin);
+        set('rChad', pChad);
+        set('rWill', pWill);
+
+        set('rTotal', total);
+        set('rProfit', profit);
+        document.getElementById('rMargin').innerText = "Margin: " + margin.toFixed(1) + "%";
+
+        var html = "<li>" + nBase + " Gallons Base</li>" +
+                   "<li>" + nClear + " Gallons Clear</li>" +
+                   "<li>" + nFlake + " Boxes Flake</li>";
+        if(uMender > 0) html += "<li>" + uMender + " Gallons Mender</li>";
+        document.getElementById('shopList').innerHTML = html;
+    }
+
+    updateMapLink();
+</script>
+
+</body>
+</html>
