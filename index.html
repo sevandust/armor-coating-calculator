@@ -258,6 +258,32 @@
     .result-row.profit-row { background: #d4edda; border-color: #28a745; }
     .shop-item { background: #f0f0f0; }
   }
+  /* ── JOBBER BUTTON ──────────────────────── */
+  .btn-jobber {
+    margin-left: auto;
+    background: #0a3d2e;
+    color: #3dba6f;
+    border: 1px solid #1a6b4a;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 6px 12px; border-radius: 5px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-jobber:hover { background: #1a5c40; }
+  .job-pick-btn {
+    background: #2a2a2a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, background 0.2s;
+    width: 100%;
+  }
+  .job-pick-btn:hover { background: #333; border-color: #e8a020; }
+  .job-pick-name { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: #f0ede8; }
+  .job-pick-detail { font-size: 12px; color: #888; margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -318,6 +344,7 @@
     <div class="card-header">
       <span class="tag">2</span>
       <h3>Job Info</h3>
+      <button onclick="loadFromJobber()" class="btn-jobber no-print" id="jobberBtn">⬇ Load from Jobber</button>
     </div>
     <div class="card-body">
       <div class="grid-2">
@@ -333,6 +360,22 @@
           <label>Selling Price ($)</label>
           <input type="number" id="price" value="9600">
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── JOBBER MODAL ──────────────────────── -->
+  <div id="jobberModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; padding:20px; overflow-y:auto;">
+    <div style="max-width:560px; margin:40px auto; background:#1a1a1a; border:1px solid #333; border-radius:10px; overflow:hidden;">
+      <div style="background:#0f0f0f; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e8a020;">
+        <span style="font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#e8a020;">Select a Jobber Quote</span>
+        <button onclick="closeJobberModal()" style="background:none; border:none; color:#888; font-size:22px; cursor:pointer;">&#x2715;</button>
+      </div>
+      <div style="padding:12px 16px; border-bottom:1px solid #333;">
+        <input type="text" id="jobberSearch" placeholder="Search by client name or address..." oninput="filterJobberList()" style="width:100%; background:#2a2a2a; border:1px solid #444; border-radius:6px; color:#f0ede8; font-size:15px; padding:10px 12px; box-sizing:border-box;">
+      </div>
+      <div id="jobberList" style="padding:16px; display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto;">
+        <div style="color:#888; text-align:center; padding:30px;">Loading quotes...</div>
       </div>
     </div>
   </div>
@@ -489,7 +532,8 @@
     var nFlake = Math.ceil(sqft / 215);
     var costMat = (nBase * cBase) + (nClear * cClear) + (nFlake * cFlake) + (uMender * cMender);
 
-    var commPct = sqft > 0 ? (price / sqft) / 100 : 0;
+    var pricePerSqft = sqft > 0 ? (price / sqft) : 0;
+    var commPct = sqft > 0 ? Math.max(0, pricePerSqft - 1) / 100 : 0;
     var costComm = price * commPct;
 
     var shareRate = 0.02;
@@ -780,6 +824,139 @@
   }
 
   updateMapLink();
+
+  // ── JOBBER INTEGRATION ─────────────────────
+  const JOBBER_SERVER = 'https://armor-coating-jobber.onrender.com';
+
+  // On page load, check if we have a token in the URL (coming back from auth)
+  (function checkToken() {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('token');
+    if (token) {
+      localStorage.setItem('jobber_token', token);
+      // Clean the token out of the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      showToast('✓ Jobber Connected!');
+      // Auto-open the job picker
+      openJobPicker(token);
+    }
+  })();
+
+  function loadFromJobber() {
+    var token = localStorage.getItem('jobber_token');
+    if (!token) {
+      // Not logged in yet — send to Jobber auth
+      window.location.href = JOBBER_SERVER + '/auth';
+      return;
+    }
+    openJobPicker(token);
+  }
+
+  var allJobberQuotes = [];
+
+  function openJobPicker(token) {
+    document.getElementById('jobberModal').style.display = 'block';
+    document.getElementById('jobberSearch').value = '';
+    document.getElementById('jobberList').innerHTML = '<div style="color:#888; text-align:center; padding:30px;">Loading quotes...</div>';
+
+    fetch(JOBBER_SERVER + '/jobs', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(r) {
+      if (r.status === 401) {
+        localStorage.removeItem('jobber_token');
+        closeJobberModal();
+        window.location.href = JOBBER_SERVER + '/auth';
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) return;
+      var jobs = data.data && data.data.jobs && data.data.jobs.nodes ? data.data.jobs.nodes : [];
+      if (jobs.length === 0) {
+        document.getElementById('jobberList').innerHTML = '<div style="color:#888; text-align:center; padding:30px;">No quotes found in Jobber.</div>';
+        return;
+      }
+
+      // Build structured list
+      allJobberQuotes = jobs.map(function(job, i) {
+        var clientName = job.client && job.client.name ? job.client.name : 'Unknown Client';
+        var addr = '';
+        if (job.property && job.property.address) {
+          var a = job.property.address;
+          addr = [a.street, a.city, a.province, a.postalCode].filter(Boolean).join(', ');
+        }
+        var total = (job.amounts && job.amounts.total) ? Math.round(job.amounts.total) : (job.total ? Math.round(job.total) : '');
+        var title = job.title || ('Quote #' + (job.quoteNumber || (i+1)));
+        return { id: job.id, clientName: clientName, title: title, addr: addr, total: total };
+      });
+
+      renderJobberList(allJobberQuotes);
+    })
+    .catch(function(err) {
+      document.getElementById('jobberList').innerHTML = '<div style="color:#e05252; text-align:center; padding:30px;">Error loading quotes: ' + err.message + '</div>';
+    });
+  }
+
+  function renderJobberList(quotes) {
+    if (quotes.length === 0) {
+      document.getElementById('jobberList').innerHTML = '<div style="color:#888; text-align:center; padding:20px;">No matching quotes.</div>';
+      return;
+    }
+    var html = '';
+    quotes.forEach(function(q) {
+      html += '<button class="job-pick-btn" onclick="selectJobberJob(' + JSON.stringify(q).replace(/"/g, '&quot;') + ')">';
+      html += '<div class="job-pick-name">' + q.clientName + ' <span style="color:#888;font-weight:400;">— ' + q.title + '</span></div>';
+      if (q.addr) html += '<div class="job-pick-detail">📍 ' + q.addr + '</div>';
+      var details = [];
+      if (q.total) details.push('💰 $' + q.total.toLocaleString());
+      if (details.length) html += '<div class="job-pick-detail">' + details.join('  ·  ') + '</div>';
+      html += '</button>';
+    });
+    document.getElementById('jobberList').innerHTML = html;
+  }
+
+  function filterJobberList() {
+    var search = document.getElementById('jobberSearch').value.toLowerCase();
+    if (!search) { renderJobberList(allJobberQuotes); return; }
+    var filtered = allJobberQuotes.filter(function(q) {
+      return (q.clientName + ' ' + q.addr + ' ' + q.title).toLowerCase().indexOf(search) > -1;
+    });
+    renderJobberList(filtered);
+  }
+
+  function selectJobberJob(job) {
+    document.getElementById('jobName').value  = job.clientName + (job.title ? ' — ' + job.title : '');
+    document.getElementById('custAddr').value = job.addr  || '';
+    if (job.total) document.getElementById('price').value = job.total;
+    updateMapLink();
+    closeJobberModal();
+    showToast('✓ Quote Loaded!');
+
+    // Fetch line items to get square footage
+    if (job.id) {
+      var token = localStorage.getItem('jobber_token');
+      fetch(JOBBER_SERVER + '/quote/' + encodeURIComponent(job.id), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.data && data.data.quote && data.data.quote.lineItems && data.data.quote.lineItems.nodes.length > 0) {
+          var li = data.data.quote.lineItems.nodes[0];
+          if (li.quantity) {
+            document.getElementById('sqft').value = Math.round(li.quantity);
+            showToast('✓ Quote + Sq Ft Loaded!');
+          }
+        }
+      })
+      .catch(function(err) { console.log('Line item fetch error:', err); });
+    }
+  }
+
+  function closeJobberModal() {
+    document.getElementById('jobberModal').style.display = 'none';
+  }
 </script>
 
 </body>
