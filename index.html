@@ -22,6 +22,41 @@
     --input-bg: #2a2a2a;
     --radius: 8px;
   }
+
+  /* ── LIGHT MODE ──────────────────────────── */
+  body.light-mode {
+    --black: #f0f0f0;
+    --panel: #e0e0e0;
+    --card: #ffffff;
+    --border: #ccc;
+    --muted: #666;
+    --text: #111111;
+    --text2: #444;
+    --input-bg: #f5f5f5;
+  }
+  body.light-mode { background: #e8e8e8; }
+  body.light-mode .header { border-bottom-color: var(--accent); }
+  body.light-mode .field input { color: #111; }
+  body.light-mode .result-row { background: #f5f5f5; border-color: #ddd; }
+  body.light-mode .result-row.total-row { background: #fff3cd; border-color: var(--accent); }
+  body.light-mode .result-row.profit-row { background: #d4edda; border-color: var(--green); }
+  body.light-mode .shop-item { background: #efefef; }
+  body.light-mode .btn-map { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+  body.light-mode .result-row.sub-row { background: transparent; border-color: transparent; }
+
+  /* ── THEME TOGGLE ────────────────────────── */
+  .theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 10px;
+    transition: all 0.2s;
+    margin-left: 8px;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -294,6 +329,7 @@
     <h1>Armor Coating Co.</h1>
     <p>Job Cost Calculator · Barnes, WI</p>
   </div>
+  <button class="theme-toggle no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
 </div>
 
 <div class="wrap">
@@ -460,7 +496,7 @@
         <div class="result-row"><span class="r-label">Fuel</span><span class="r-val" id="rFuel">—</span></div>
         <div class="result-row"><span class="r-label">Drive Time</span><span class="r-val" id="rDrive">—</span></div>
         <div class="result-row"><span class="r-label">Overhead</span><span class="r-val" id="rOver">—</span></div>
-        <div class="result-row" style="background:#1a1a2e; border-color:#4a90d9;"><span class="r-label" style="color:#7ab4f0; font-weight:600;">Cost Per Sq Ft</span><span class="r-val" id="rCostPerSqft" style="color:#7ab4f0;">—</span></div>
+        <div class="result-row" style="background:#1a1a2e; border-color:#4a90d9;"><span class="r-label" style="color:#7ab4f0; font-weight:600;">Price Per Sq Ft</span><span class="r-val" id="rCostPerSqft" style="color:#7ab4f0;">—</span></div>
         <div class="result-row"><span class="r-label" id="lblComm">Sales Commission</span><span class="r-val" id="rComm">—</span></div>
 
         <div class="result-row" style="margin-top:4px; background:#111f30; border-color:#2d5a8f;">
@@ -547,7 +583,7 @@
 
     set('rMat', costMat); set('rLabor', labor); set('rFuel', fuel);
     set('rOver', overhead);
-    var costPerSqft = sqft > 0 ? (total / sqft) : 0;
+    var costPerSqft = sqft > 0 ? (price / sqft) : 0;
     document.getElementById('rCostPerSqft').innerText = sqft > 0 ? '$' + costPerSqft.toFixed(2) + ' / sq ft' : '—';
     document.getElementById('rDrive').innerText = driveTime + ' min';
     document.getElementById('lblComm').innerText = 'Sales Comm (' + (commPct*100).toFixed(2) + '%):';
@@ -827,6 +863,31 @@
   }
 
   updateMapLink();
+
+  // ── THEME TOGGLE ───────────────────────────
+  function toggleTheme() {
+    var body = document.body;
+    var btn = document.getElementById('themeToggle');
+    if (body.classList.contains('light-mode')) {
+      body.classList.remove('light-mode');
+      btn.innerText = '🌙';
+      localStorage.setItem('ac_theme', 'dark');
+    } else {
+      body.classList.add('light-mode');
+      btn.innerText = '☀️';
+      localStorage.setItem('ac_theme', 'light');
+    }
+  }
+
+  // Load saved theme
+  (function loadTheme() {
+    var theme = localStorage.getItem('ac_theme');
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+      var btn = document.getElementById('themeToggle');
+      if (btn) btn.innerText = '☀️';
+    }
+  })();
 
   // ── JOBBER INTEGRATION ─────────────────────
   const JOBBER_SERVER = 'https://armor-coating-jobber.onrender.com';
